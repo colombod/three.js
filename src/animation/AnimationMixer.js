@@ -284,7 +284,7 @@ Object.assign( AnimationMixer.prototype, EventDispatcher.prototype, {
 
 
 		var actionByRoot = actionsForClip.actionByRoot,
-			rootUuid = ( actions._localRoot || this._root ).uuid;
+			rootUuid = ( action._localRoot || this._root ).uuid;
 
 		delete actionByRoot[ rootUuid ];
 
@@ -610,11 +610,7 @@ Object.assign( AnimationMixer.prototype, EventDispatcher.prototype, {
 
 			var action = actions[ i ];
 
-			if ( action.enabled ) {
-
-				action._update( time, deltaTime, timeDirection, accuIndex );
-
-			}
+			action._update( time, deltaTime, timeDirection, accuIndex );
 
 		}
 

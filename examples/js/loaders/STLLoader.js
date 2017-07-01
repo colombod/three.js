@@ -70,19 +70,23 @@ THREE.STLLoader.prototype = {
 
 			}
 
-			// some binary files will have different size from expected,
-			// checking characters higher than ASCII to confirm is binary
-			var fileLength = reader.byteLength;
-			for ( var index = 0; index < fileLength; index ++ ) {
+			// An ASCII STL data must begin with 'solid ' as the first six bytes.
+			// However, ASCII STLs lacking the SPACE after the 'd' are known to be
+			// plentiful.  So, check the first 5 bytes for 'solid'.
 
-				if ( reader.getUint8( index, false ) > 127 ) {
+			// US-ASCII ordinal values for 's', 'o', 'l', 'i', 'd'
+			var solid = [ 115, 111, 108, 105, 100 ];
 
-					return true;
+			for ( var i = 0; i < 5; i ++ ) {
 
-				}
+				// If solid[ i ] does not match the i-th byte, then it is not an
+				// ASCII STL; hence, it is binary and return true.
 
-			}
+				if ( solid[ i ] != reader.getUint8( i, false ) ) return true;
 
+ 			}
+
+			// First 5 bytes read "solid"; declare it to be an ASCII STL
 			return false;
 
 		};
@@ -196,36 +200,60 @@ THREE.STLLoader.prototype = {
 
 	parseASCII: function ( data ) {
 
-		var geometry, length, patternFace, patternNormal, patternVertex, result, text;
-		geometry = new THREE.BufferGeometry();
-		patternFace = /facet([\s\S]*?)endfacet/g;
+		var geometry = new THREE.BufferGeometry();
+		var patternFace = /facet([\s\S]*?)endfacet/g;
+		var faceCounter = 0;
+
+		var patternFloat = /[\s]+([+-]?(?:\d+.\d+|\d+.|\d+|.\d+)(?:[eE][+-]?\d+)?)/.source;
+		var patternVertex = new RegExp( 'vertex' + patternFloat + patternFloat + patternFloat, 'g' );
+		var patternNormal = new RegExp( 'normal' + patternFloat + patternFloat + patternFloat, 'g' );
 
 		var vertices = [];
 		var normals = [];
 
 		var normal = new THREE.Vector3();
 
+		var result;
+
 		while ( ( result = patternFace.exec( data ) ) !== null ) {
 
-			text = result[ 0 ];
-			patternNormal = /normal[\s]+([\-+]?[0-9]+\.?[0-9]*([eE][\-+]?[0-9]+)?)+[\s]+([\-+]?[0-9]*\.?[0-9]+([eE][\-+]?[0-9]+)?)+[\s]+([\-+]?[0-9]*\.?[0-9]+([eE][\-+]?[0-9]+)?)+/g;
+			var vertexCountPerFace = 0;
+			var normalCountPerFace = 0;
+
+			var text = result[ 0 ];
 
 			while ( ( result = patternNormal.exec( text ) ) !== null ) {
 
 				normal.x = parseFloat( result[ 1 ] );
-				normal.y = parseFloat( result[ 3 ] );
-				normal.z = parseFloat( result[ 5 ] );
+				normal.y = parseFloat( result[ 2 ] );
+				normal.z = parseFloat( result[ 3 ] );
+				normalCountPerFace ++;
 
 			}
-
-			patternVertex = /vertex[\s]+([\-+]?[0-9]+\.?[0-9]*([eE][\-+]?[0-9]+)?)+[\s]+([\-+]?[0-9]*\.?[0-9]+([eE][\-+]?[0-9]+)?)+[\s]+([\-+]?[0-9]*\.?[0-9]+([eE][\-+]?[0-9]+)?)+/g;
 
 			while ( ( result = patternVertex.exec( text ) ) !== null ) {
 
-				vertices.push( parseFloat( result[ 1 ] ), parseFloat( result[ 3 ] ), parseFloat( result[ 5 ] ) );
+				vertices.push( parseFloat( result[ 1 ] ), parseFloat( result[ 2 ] ), parseFloat( result[ 3 ] ) );
 				normals.push( normal.x, normal.y, normal.z );
+				vertexCountPerFace ++;
 
 			}
+
+			// Every face have to own ONE valid normal
+			if ( normalCountPerFace !== 1 ) {
+
+				throw new Error( 'Something isn\'t right with the normal of face number ' + faceCounter );
+
+			}
+
+			// Each face have to own THREE valid vertices
+			if ( vertexCountPerFace !== 3 ) {
+
+				throw new Error( 'Something isn\'t right with the vertices of face number ' + faceCounter );
+
+			}
+
+			faceCounter ++;
 
 		}
 
@@ -241,13 +269,22 @@ THREE.STLLoader.prototype = {
 		if ( typeof buf !== "string" ) {
 
 			var array_buffer = new Uint8Array( buf );
-			var strArray = [];
-			for ( var i = 0; i < buf.byteLength; i ++ ) {
 
-				strArray.push(String.fromCharCode( array_buffer[ i ] )); // implicitly assumes little-endian
+			if ( window.TextDecoder !== undefined ) {
+
+				return new TextDecoder().decode( array_buffer );
 
 			}
-			return strArray.join('');
+
+			var str = '';
+
+			for ( var i = 0, il = buf.byteLength; i < il; i ++ ) {
+
+				str += String.fromCharCode( array_buffer[ i ] ); // implicitly assumes little-endian
+
+			}
+
+			return str;
 
 		} else {
 

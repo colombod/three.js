@@ -4,7 +4,7 @@ import { Quaternion } from './Quaternion';
 
 /**
  * @author mrdoob / http://mrdoob.com/
- * @author *kile / http://kile.stravaganza.org/
+ * @author kile / http://kile.stravaganza.org/
  * @author philogb / http://blog.thejit.org/
  * @author mikael emtinger / http://gomo.se/
  * @author egraether / http://egraether.com/
@@ -214,19 +214,9 @@ Object.assign( Vector3.prototype, {
 
 	multiplyScalar: function ( scalar ) {
 
-		if ( isFinite( scalar ) ) {
-
-			this.x *= scalar;
-			this.y *= scalar;
-			this.z *= scalar;
-
-		} else {
-
-			this.x = 0;
-			this.y = 0;
-			this.z = 0;
-
-		}
+		this.x *= scalar;
+		this.y *= scalar;
+		this.z *= scalar;
 
 		return this;
 
@@ -248,7 +238,7 @@ Object.assign( Vector3.prototype, {
 
 		return function applyEuler( euler ) {
 
-			if ( (euler && euler.isEuler) === false ) {
+			if ( ! ( euler && euler.isEuler ) ) {
 
 				console.error( 'THREE.Vector3: .applyEuler() now expects an Euler rotation rather than a Vector3 and order.' );
 
@@ -290,12 +280,13 @@ Object.assign( Vector3.prototype, {
 		var x = this.x, y = this.y, z = this.z;
 		var e = m.elements;
 
-		this.x = e[ 0 ] * x + e[ 4 ] * y + e[ 8 ]  * z + e[ 12 ];
-		this.y = e[ 1 ] * x + e[ 5 ] * y + e[ 9 ]  * z + e[ 13 ];
-		this.z = e[ 2 ] * x + e[ 6 ] * y + e[ 10 ] * z + e[ 14 ];
-		var w =  e[ 3 ] * x + e[ 7 ] * y + e[ 11 ] * z + e[ 15 ];
+		var w = 1 / ( e[ 3 ] * x + e[ 7 ] * y + e[ 11 ] * z + e[ 15 ] );
 
-		return this.divideScalar( w );
+		this.x = ( e[ 0 ] * x + e[ 4 ] * y + e[ 8 ]  * z + e[ 12 ] ) * w;
+		this.y = ( e[ 1 ] * x + e[ 5 ] * y + e[ 9 ]  * z + e[ 13 ] ) * w;
+		this.z = ( e[ 2 ] * x + e[ 6 ] * y + e[ 10 ] * z + e[ 14 ] ) * w;
+
+		return this;
 
 	},
 
@@ -401,7 +392,7 @@ Object.assign( Vector3.prototype, {
 
 	clamp: function ( min, max ) {
 
-		// This function assumes min < max, if this assumption isn't true it will not operate correctly
+		// assumes min < max, componentwise
 
 		this.x = Math.max( min.x, Math.min( max.x, this.x ) );
 		this.y = Math.max( min.y, Math.min( max.y, this.y ) );
@@ -431,7 +422,7 @@ Object.assign( Vector3.prototype, {
 
 		var length = this.length();
 
-		return this.multiplyScalar( Math.max( min, Math.min( max, length ) ) / length );
+		return this.divideScalar( length || 1 ).multiplyScalar( Math.max( min, Math.min( max, length ) ) );
 
 	},
 
@@ -491,6 +482,8 @@ Object.assign( Vector3.prototype, {
 
 	},
 
+	// TODO lengthSquared?
+
 	lengthSq: function () {
 
 		return this.x * this.x + this.y * this.y + this.z * this.z;
@@ -511,13 +504,13 @@ Object.assign( Vector3.prototype, {
 
 	normalize: function () {
 
-		return this.divideScalar( this.length() );
+		return this.divideScalar( this.length() || 1 );
 
 	},
 
 	setLength: function ( length ) {
 
-		return this.multiplyScalar( length / this.length() );
+		return this.normalize().multiplyScalar( length );
 
 	},
 
@@ -636,7 +629,7 @@ Object.assign( Vector3.prototype, {
 
 	},
 
-	setFromSpherical: function( s ) {
+	setFromSpherical: function ( s ) {
 
 		var sinPhiRadius = Math.sin( s.phi ) * s.radius;
 
@@ -648,7 +641,7 @@ Object.assign( Vector3.prototype, {
 
 	},
 
-	setFromCylindrical: function( c ) {
+	setFromCylindrical: function ( c ) {
 
 		this.x = c.radius * Math.sin( c.theta );
 		this.y = c.y;
@@ -660,7 +653,13 @@ Object.assign( Vector3.prototype, {
 
 	setFromMatrixPosition: function ( m ) {
 
-		return this.setFromMatrixColumn( m, 3 );
+		var e = m.elements;
+
+		this.x = e[ 12 ];
+		this.y = e[ 13 ];
+		this.z = e[ 14 ];
+
+		return this;
 
 	},
 
@@ -679,15 +678,6 @@ Object.assign( Vector3.prototype, {
 	},
 
 	setFromMatrixColumn: function ( m, index ) {
-
-		if ( typeof m === 'number' ) {
-
-			console.warn( 'THREE.Vector3: setFromMatrixColumn now expects ( matrix, index ).' );
-			var temp = m;
-			m = index;
-			index = temp;
-
-		}
 
 		return this.fromArray( m.elements, index * 4 );
 

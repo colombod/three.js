@@ -17,6 +17,7 @@ function BufferAttribute( array, itemSize, normalized ) {
 	}
 
 	this.uuid = _Math.generateUUID();
+	this.name = '';
 
 	this.array = array;
 	this.itemSize = itemSize;
@@ -32,15 +33,15 @@ function BufferAttribute( array, itemSize, normalized ) {
 
 }
 
-Object.defineProperty( BufferAttribute.prototype, "needsUpdate", {
+Object.defineProperty( BufferAttribute.prototype, 'needsUpdate', {
 
-	set: function(value) { 
-		
+	set: function ( value ) {
+
 		if ( value === true ) this.version ++;
-	
+
 	}
 
-});
+} );
 
 Object.assign( BufferAttribute.prototype, {
 

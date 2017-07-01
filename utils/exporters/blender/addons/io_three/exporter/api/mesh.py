@@ -134,6 +134,26 @@ def bones(mesh, options):
 
 
 @_mesh
+def buffer_color(mesh, options):
+    """
+
+    :param mesh:
+    :rtype: []
+
+    """
+    colors_ = []
+
+    try:
+        vertex_colors_ = mesh.vertex_colors[0]  # only supports one set
+    except IndexError:
+        return []  # no colors found
+    for color_data in vertex_colors_.data:
+        colors_.extend(tuple(color_data.color))
+
+    return colors_
+
+
+@_mesh
 def buffer_normal(mesh, options):
     """
 
@@ -706,6 +726,7 @@ def materials(mesh, options):
             constants.BLENDING: material.blending(mat),
             constants.DEPTH_TEST: material.depth_test(mat),
             constants.DEPTH_WRITE: material.depth_write(mat),
+            constants.DOUBLE_SIDED: material.double_sided(mat),
             constants.DBG_NAME: mat.name,
             constants.DBG_COLOR: dbg_color,
             constants.DBG_INDEX: index
