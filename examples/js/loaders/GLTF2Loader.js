@@ -1540,13 +1540,16 @@ THREE.GLTF2Loader = ( function () {
 
 	}
 
+	/**
+	 * Specification: https://github.com/KhronosGroup/glTF/blob/master/specification/2.0/README.md#default-material
+	 */
 	function createDefaultMaterial() {
 
-		return new THREE.MeshPhongMaterial( {
-			color: 0x00000,
-			emissive: 0x888888,
-			specular: 0x000000,
-			shininess: 0,
+		return new THREE.MeshStandardMaterial( {
+			color: 0xFFFFFF,
+			emissive: 0x000000,
+			metalness: 1,
+			roughness: 1,
 			transparent: false,
 			depthTest: true,
 			side: THREE.FrontSide
@@ -2184,7 +2187,7 @@ THREE.GLTF2Loader = ( function () {
 
 						}
 
-						if ( material.aoMap !== undefined
+						if ( material.aoMap
 								&& geometry.attributes.uv2 === undefined
 								&& geometry.attributes.uv !== undefined ) {
 
@@ -2345,7 +2348,7 @@ THREE.GLTF2Loader = ( function () {
 
 					}
 
-					meshNode.name = ( name === "0" ? group.name : group.name + name );
+					meshNode.name = group.name + '_' + name;
 
 					if ( primitive.extras ) meshNode.userData = primitive.extras;
 
@@ -2361,38 +2364,43 @@ THREE.GLTF2Loader = ( function () {
 
 	};
 
+	/**
+	 * Specification: https://github.com/KhronosGroup/glTF/tree/master/specification/2.0#cameras
+	 */
 	GLTFParser.prototype.loadCameras = function () {
 
 		var json = this.json;
 
 		return _each( json.cameras, function ( camera ) {
 
-			if ( camera.type == "perspective" && camera.perspective ) {
+			var _camera;
 
-				var yfov = camera.perspective.yfov;
-				var aspectRatio = camera.perspective.aspectRatio !== undefined ? camera.perspective.aspectRatio : 1;
+			var params = camera[ camera.type ];
 
-				// According to COLLADA spec...
-				// aspectRatio = xfov / yfov
-				var xfov = yfov * aspectRatio;
+			if ( !params ) {
 
-				var _camera = new THREE.PerspectiveCamera( THREE.Math.radToDeg( xfov ), aspectRatio, camera.perspective.znear || 1, camera.perspective.zfar || 2e6 );
-				if ( camera.name !== undefined ) _camera.name = camera.name;
-
-				if ( camera.extras ) _camera.userData = camera.extras;
-
-				return _camera;
-
-			} else if ( camera.type == "orthographic" && camera.orthographic ) {
-
-				var _camera = new THREE.OrthographicCamera( window.innerWidth / - 2, window.innerWidth / 2, window.innerHeight / 2, window.innerHeight / - 2, camera.orthographic.znear, camera.orthographic.zfar );
-				if ( camera.name !== undefined ) _camera.name = camera.name;
-
-				if ( camera.extras ) _camera.userData = camera.extras;
-
-				return _camera;
+				console.warn( 'GLTF2Loader: Missing camera parameters.' );
+				return;
 
 			}
+
+			if ( camera.type === 'perspective' ) {
+
+				var aspectRatio = params.aspectRatio || 1;
+				var xfov = params.yfov * aspectRatio;
+
+				_camera = new THREE.PerspectiveCamera( THREE.Math.radToDeg( xfov ), aspectRatio, params.znear || 1, params.zfar || 2e6 );
+
+			} else if ( camera.type === 'orthographic' ) {
+
+				_camera = new THREE.OrthographicCamera( params.xmag / -2, params.xmag / 2, params.ymag / 2, params.ymag / -2, params.znear, params.zfar );
+
+			}
+
+			if ( camera.name !== undefined ) _camera.name = camera.name;
+			if ( camera.extras ) _camera.userData = camera.extras;
+
+			return _camera;
 
 		} );
 
@@ -2647,6 +2655,8 @@ THREE.GLTF2Loader = ( function () {
 
 							}
 
+							//do not clone children as they will be replaced anyway
+							var clonedgroup = group.clone( false );
 							for ( var childrenId in group.children ) {
 
 								var child = group.children[ childrenId ];
@@ -2655,6 +2665,7 @@ THREE.GLTF2Loader = ( function () {
 
 								var originalMaterial = child.material;
 								var originalGeometry = child.geometry;
+								var originalInfluences = child.morphTargetInfluences;
 								var originalUserData = child.userData;
 								var originalName = child.name;
 
@@ -2690,6 +2701,7 @@ THREE.GLTF2Loader = ( function () {
 								}
 
 								child.castShadow = true;
+								child.morphTargetInfluences = originalInfluences;
 								child.userData = originalUserData;
 								child.name = originalName;
 
@@ -2741,10 +2753,10 @@ THREE.GLTF2Loader = ( function () {
 
 								}
 
-								_node.add( child );
 
+								clonedgroup.add(child);
 							}
-
+							_node.add( clonedgroup );
 						}
 
 					}

@@ -1,16 +1,13 @@
-import { CanvasTexture } from '../../../textures/CanvasTexture';
-import { Vector3 } from '../../../math/Vector3';
-import { Quaternion } from '../../../math/Quaternion';
-
 /**
  * @author mikael emtinger / http://gomo.se/
  * @author alteredq / http://alteredqualia.com/
  */
 
-function SpritePlugin( renderer, sprites ) {
+import { CanvasTexture } from '../../textures/CanvasTexture';
+import { Vector3 } from '../../math/Vector3';
+import { Quaternion } from '../../math/Quaternion';
 
-	var gl = renderer.context;
-	var state = renderer.state;
+function WebGLSpriteRenderer( renderer, gl, state, capabilities ) {
 
 	var vertexBuffer, elementBuffer;
 	var program, attributes, uniforms;
@@ -88,7 +85,7 @@ function SpritePlugin( renderer, sprites ) {
 
 	}
 
-	this.render = function ( scene, camera ) {
+	this.render = function ( sprites, scene, camera ) {
 
 		if ( sprites.length === 0 ) return;
 
@@ -261,7 +258,7 @@ function SpritePlugin( renderer, sprites ) {
 
 		gl.shaderSource( vertexShader, [
 
-			'precision ' + renderer.getPrecision() + ' float;',
+			'precision ' + capabilities.precision + ' float;',
 
 			'#define SHADER_NAME ' + 'SpriteMaterial',
 
@@ -301,7 +298,7 @@ function SpritePlugin( renderer, sprites ) {
 
 		gl.shaderSource( fragmentShader, [
 
-			'precision ' + renderer.getPrecision() + ' float;',
+			'precision ' + capabilities.precision + ' float;',
 
 			'#define SHADER_NAME ' + 'SpriteMaterial',
 
@@ -384,4 +381,4 @@ function SpritePlugin( renderer, sprites ) {
 }
 
 
-export { SpritePlugin };
+export { WebGLSpriteRenderer };
